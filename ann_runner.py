@@ -79,6 +79,7 @@ def main(args):
         for row in test_reader:
             X_test.append([float(x) for x in row])
 
+    X_test = np.array(X_test)
     y_pred = ann.predict(X_test)
     util.write_csv('predicted_ann.csv', np.transpose(
         np.array(y_pred, ndmin=2)))

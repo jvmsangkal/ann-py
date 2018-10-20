@@ -1,60 +1,80 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class ANN(object):
     def __init__(self, n_in, n_h1, n_h2, n_out, eta, max_epoch):
-        self.x_in = np.zeros((n_in, 1))
-        self.w_h1 = -0.1 + (0.1 + 0.1) * np.random.rand(n_h1, n_in)
-        self.b_h1 = -0.1 + (0.1 + 0.1) * np.random.rand(n_h1, 1)
-        self.w_h2 = -0.1 + (0.1 + 0.1) * np.random.rand(n_h2, n_h1)
-        self.b_h2 = -0.1 + (0.1 + 0.1) * np.random.rand(n_h2, 1)
-        self.w_out = -0.1 + (0.1 + 0.1) * np.random.rand(n_out, n_h2)
-        self.b_out = -0.1 + (0.1 + 0.1) * np.random.rand(n_out, 1)
-        self.d_out = np.zeros((n_out, 1))
-
+        self.n_in = n_in
+        self.n_h1 = n_h1
+        self.n_h2 = n_h2
+        self.n_out = n_out
         self.eta = eta
         self.max_epoch = max_epoch
 
-    def train(self, X, Y):
-        N = len(X)
-        total_err = np.zeros(self.max_epoch)
+        self.w_h1 = self.seed(n_h1, n_in)
+        self.b_h1 = self.seed(n_h1, 1)
+        self.w_h2 = self.seed(n_h2, n_h1)
+        self.b_h2 = self.seed(n_h2, 1)
+        self.w_out = self.seed(n_out, n_h2)
+        self.b_out = self.seed(n_out, 1)
+
+    def seed(self, rows, cols):
+        return -0.1 + (0.1 + 0.1) * np.random.rand(rows, cols)
+
+    def forward(self, x_in):
+        v_h1 = self.w_h1.dot(x_in) + self.b_h1
+        self.y_h1 = self.sigmoid(v_h1)
+
+        v_h2 = self.w_h2.dot(self.y_h1) + self.b_h2
+        self.y_h2 = self.sigmoid(v_h2)
+
+        v_out = self.w_out.dot(self.y_h2) + self.b_out
+        out = self.sigmoid(v_out)
+
+        return out
+
+    def sigmoid(self, s):
+        return 1 / (1 + np.exp(-s))
+
+    def backward(self, x_in, d_out, out):
+        err_out = d_out - out
+        delta_out = err_out * self.sigmoid_prime(out)
+
+        err_h2 = self.w_out.T.dot(delta_out)
+        delta_h2 = err_h2 * self.sigmoid_prime(self.y_h2)
+
+        err_h1 = self.w_h2.T.dot(delta_h2)
+        delta_h1 = err_h1 * self.sigmoid_prime(self.y_h1)
+
+        self.w_out += self.eta * delta_out.dot(self.y_h2.T)
+        self.b_out += self.eta * delta_out
+
+        self.w_h2 += self.eta * delta_h2.dot(self.y_h1.T)
+        self.b_h2 += self.eta * delta_h2
+
+        self.w_h1 += self.eta * delta_h1.dot(x_in.T)
+        self.b_h1 += self.eta * delta_h1
+
+        return err_out
+
+    def sigmoid_prime(self, s):
+        return s * (1 - s)
+
+    def train(self, X, y):
+        total_err = []
         for q in range(self.max_epoch):
-            p = np.random.permutation(N)
-            for n in range(N):
-                nn = p[n]
+            for (x, y_target) in zip(X, y):
+                x = self.to_2d_array(x).T
 
-                self.x_in = np.transpose(np.array(X[nn], ndmin=2))
-                self.d_out = np.transpose(np.array(Y[nn], ndmin=2))
+                d_out = np.zeros(self.n_out, dtype=np.int)
+                d_out[y_target - 1] = 1
+                d_out = self.to_2d_array(d_out).T
 
-                v_h1 = np.dot(self.w_h1, self.x_in) + self.b_h1
-                y_h1 = 1 / (1 + np.exp(-v_h1))
+                out = self.forward(x)
+                err = self.backward(x, d_out, out)
 
-                v_h2 = np.dot(self.w_h2, y_h1) + self.b_h2
-                y_h2 = 1 / (1 + np.exp(-v_h2))
-
-                v_out = np.dot(self.w_out, y_h2) + self.b_out
-                out = 1 / (1 + np.exp(-v_out))
-
-                err = self.d_out - out
-                delta_out = err * out * (1 - out)
-                delta_h2 = y_h2 * (1 - y_h2) * np.dot(
-                    np.transpose(self.w_out), delta_out)
-                delta_h1 = y_h1 * (1 - y_h1) * np.dot(
-                    np.transpose(self.w_h2), delta_h2)
-
-                self.w_out = self.w_out + (
-                    self.eta * np.dot(delta_out, np.transpose(y_h2)))
-                self.b_out = self.b_out + (self.eta * delta_out)
-
-                self.w_h2 = self.w_h2 + (
-                    self.eta * np.dot(delta_h2, np.transpose(y_h1)))
-                self.b_h2 = self.b_h2 + (self.eta * delta_h2)
-
-                self.w_h1 = self.w_h1 + (
-                    self.eta * np.dot(delta_h1, np.transpose(self.x_in)))
-                self.b_h1 = self.b_h1 + (self.eta * delta_h1)
-
-            total_err[q] = total_err[q] + np.sum(err * err)
+            error = np.sum(np.square(err))
+            total_err.append(error)
 
             if q % 5 == 0:
                 print('Iteration: {} Error: {}'.format(q, total_err[q]))
@@ -63,25 +83,26 @@ class ANN(object):
                 print('Iteration: {} Error: {}'.format(q, total_err[q]))
                 break
 
+        fig, ax = plt.subplots()
+        ax.plot(total_err)
+
+        ax.set(
+            xlabel='epoch',
+            ylabel='errors',
+            title='errors vs epoch'
+        )
+        ax.grid()
+
+        fig.savefig('plot.png')
+
+    def to_2d_array(self, l):
+        return np.array(l, ndmin=2)
+
     def predict(self, X):
-        N = len(X)
+        y = np.zeros(len(X), dtype=np.int)
+        for i, x in enumerate(X):
+            x = self.to_2d_array(x).T
+            out = self.forward(x)
+            y[i] = int(np.argmax(out) + 1)
 
-        nn_output = []
-        for n in range(N):
-            self.x_in = np.transpose(np.array(X[n], ndmin=2))
-
-            v_h1 = np.dot(self.w_h1, self.x_in) + self.b_h1
-            y_h1 = 1 / (1 + np.exp(-v_h1))
-
-            v_h2 = np.dot(self.w_h2, y_h1) + self.b_h2
-            y_h2 = 1 / (1 + np.exp(-v_h2))
-
-            v_out = np.dot(self.w_out, y_h2) + self.b_out
-
-            out = 1 / (1 + np.exp(-v_out))
-            print(out)
-            p = list(
-                np.greater_equal(np.transpose(out), 0.5)[0]).index(True) + 1
-            nn_output.append(p)
-
-        return nn_output
+        return y
