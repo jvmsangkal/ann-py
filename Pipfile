@@ -8,6 +8,8 @@ pylint = "*"
 numpy = "*"
 imbalanced-learn = "*"
 sklearn = "*"
+pandas = "*"
+matplotlib = "*"
 
 [dev-packages]
 pylint = "*"

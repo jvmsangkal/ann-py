@@ -18,7 +18,6 @@ class ANN(object):
     def train(self, X, Y):
         N = len(X)
         total_err = np.zeros(self.max_epoch)
-
         for q in range(self.max_epoch):
             p = np.random.permutation(N)
             for n in range(N):
@@ -43,49 +42,33 @@ class ANN(object):
                 delta_h1 = y_h1 * (1 - y_h1) * np.dot(
                     np.transpose(self.w_h2), delta_h2)
 
-                self.w_out = np.add(
-                    self.w_out,
-                    np.dot(self.eta * delta_out, np.transpose(y_h2))
-                )
-                self.b_out = np.add(
-                    self.b_out,
-                    self.eta * delta_out
-                )
+                self.w_out = self.w_out + (
+                    self.eta * np.dot(delta_out, np.transpose(y_h2)))
+                self.b_out = self.b_out + (self.eta * delta_out)
 
-                self.w_h2 = np.add(
-                    self.w_h2,
-                    np.dot(self.eta * delta_h2, np.transpose(y_h1))
-                )
-                self.b_h2 = np.add(
-                    self.b_h2,
-                    self.eta * delta_h2
-                )
+                self.w_h2 = self.w_h2 + (
+                    self.eta * np.dot(delta_h2, np.transpose(y_h1)))
+                self.b_h2 = self.b_h2 + (self.eta * delta_h2)
 
-                self.w_h1 = np.add(
-                    self.w_h1,
-                    np.dot(self.eta * delta_h1, np.transpose(self.x_in))
-                )
-                self.b_h1 = np.add(
-                    self.b_h1,
-                    self.eta * delta_h1
-                )
+                self.w_h1 = self.w_h1 + (
+                    self.eta * np.dot(delta_h1, np.transpose(self.x_in)))
+                self.b_h1 = self.b_h1 + (self.eta * delta_h1)
 
-            total_err[q] = total_err[q] + np.sum(np.multiply(err, err))
+            total_err[q] = total_err[q] + np.sum(err * err)
 
-            if q % 500 == 0:
+            if q % 5 == 0:
                 print('Iteration: {} Error: {}'.format(q, total_err[q]))
 
             if total_err[q] < 0.001:
                 print('Iteration: {} Error: {}'.format(q, total_err[q]))
                 break
 
-    def test(self, X, Y):
+    def predict(self, X):
         N = len(X)
 
-        nn_output = np.zeros(N)
+        nn_output = []
         for n in range(N):
             self.x_in = np.transpose(np.array(X[n], ndmin=2))
-            self.d_out = np.transpose(np.array(Y[n], ndmin=2))
 
             v_h1 = np.dot(self.w_h1, self.x_in) + self.b_h1
             y_h1 = 1 / (1 + np.exp(-v_h1))
@@ -96,5 +79,9 @@ class ANN(object):
             v_out = np.dot(self.w_out, y_h2) + self.b_out
 
             out = 1 / (1 + np.exp(-v_out))
-            print(np.greater_equal(np.transpose(out), 0.5))
-            # nn_output[n] = np.greater_equal(np.transpose(out), 0.5)
+            print(out)
+            p = list(
+                np.greater_equal(np.transpose(out), 0.5)[0]).index(True) + 1
+            nn_output.append(p)
+
+        return nn_output

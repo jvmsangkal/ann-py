@@ -2,6 +2,7 @@ from ann import ANN
 from collections import Counter
 from imblearn.over_sampling import SMOTE
 from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import classification_report, confusion_matrix
 
 import os
 import csv
@@ -29,7 +30,7 @@ def main(args):
     y = np.array(y)
 
     X_resampled, y_resampled = SMOTE().fit_resample(X, y)
-    print('Classes:')
+    print('Input Classes:')
     print(Counter(y))
     print('After Resampling:')
     print(Counter(y_resampled))
@@ -40,6 +41,11 @@ def main(args):
     for train_index, test_index in skf.split(X_resampled, y_resampled):
         X_train, X_test = X_resampled[train_index], X_resampled[test_index]
         y_train, y_test = y_resampled[train_index], y_resampled[test_index]
+
+    print('Training Set:')
+    print(Counter(y_train))
+    print('Validation Set:')
+    print(Counter(y_test))
 
     util.write_csv('training_set.csv', X_train)
     util.write_csv('training_labels.csv', np.transpose(
@@ -61,7 +67,21 @@ def main(args):
     ann.train(X_train, y_train)
 
     print('Testing Phase')
-    ann.test(X_test, y_test)
+    y_pred = ann.predict(X_test)
+
+    print(confusion_matrix(y_test, y_pred))
+    print(classification_report(y_test, y_pred))
+
+    X_test = []
+
+    with open(os.path.abspath(args.test_set)) as test_file:
+        test_reader = csv.reader(test_file)
+        for row in test_reader:
+            X_test.append([float(x) for x in row])
+
+    y_pred = ann.predict(X_test)
+    util.write_csv('predicted_ann.csv', np.transpose(
+        np.array(y_pred, ndmin=2)))
 
 
 if __name__ == '__main__':
@@ -130,6 +150,15 @@ if __name__ == '__main__':
         default=30000,
         help='Maximum epoch'
     )
+
+    parser.add_argument(
+        '--test-set',
+        dest='test_set',
+        metavar='<path-to-test-set>',
+        required=True,
+        help='Path to the test_set file'
+    )
+
     args = parser.parse_args()
 
     start_time = time.time()
