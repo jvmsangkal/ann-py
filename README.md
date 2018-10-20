@@ -16,7 +16,7 @@ pipenv install
 Running the ANN:
 ----
 ```
-python ann_runner.py --data data.csv --labels data_labels.csv --in 354 --h1 300 --h2 250 --out 8 --eta 0.0001 --test-set test_set.csv
+python ann_runner.py --data data.csv --labels data_labels.csv --in 354 --h1 180 --h2 170 --out 8 --eta 0.01 --test-set test_set.csv
 ```
 
 Running the SVM:
